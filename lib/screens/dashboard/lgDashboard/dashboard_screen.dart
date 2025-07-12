@@ -1,37 +1,62 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/dashboard/lgDashboard/totayleadsScreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend/services/hr_service.dart';
 import 'package:frontend/screens/dashboard/lgDashboard/new_leads_screen.dart';
 import 'dashboard_drawer.dart';
 import 'dashboard_card.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
-  static const List<Map<String, String>> tableData = [
-    {
-      "name": "John Doe",
-      "designation": "HR Manager",
-      "mobile": "9876543210",
-      "email": "john@example.com",
-    },
-    {
-      "name": "Jane Smith",
-      "designation": "Recruiter",
-      "mobile": "9876543211",
-      "email": "jane@example.com",
-    },
-    {
-      "name": "Bob Johnson",
-      "designation": "Talent Lead",
-      "mobile": "9876543212",
-      "email": "bob@example.com",
-    },
-    {
-      "name": "Alice Williams",
-      "designation": "HR Executive",
-      "mobile": "9876543213",
-      "email": "alice@example.com",
-    },
-  ];
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int today = 0;
+  int month = 0;
+  int total = 0;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchStats();
+  }
+
+  Future<void> fetchStats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('authToken');
+      final userId = token != null ? parseUserIdFromJWT(token) : null;
+
+      if (userId != null && userId.isNotEmpty) {
+        final stats = await HrService.fetchUserStats(userId);
+        setState(() {
+          today = stats['today'];
+          month = stats['month'];
+          total = stats['total'];
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  String parseUserIdFromJWT(String token) {
+    final parts = token.split('.');
+    if (parts.length != 3) return '';
+    final payload = utf8.decode(
+      base64Url.decode(base64Url.normalize(parts[1])),
+    );
+    final data = jsonDecode(payload);
+    return data['userId'] ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,36 +86,37 @@ class DashboardScreen extends StatelessWidget {
             children: [
               const _SectionTitle(title: 'Statistics & Reports'),
               const SizedBox(height: 20),
-              const Row(
-                children: [
-                  Expanded(
-                    child: DashboardCard(
-                      title: 'Today Lead Generated',
-                      amount: '32',
-                    ),
+              isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Row(
+                    children: [
+                      Expanded(
+                        child: DashboardCard(
+                          title: 'Today Lead Generated',
+                          amount: '$today',
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DashboardCard(
+                          title: 'This Month',
+                          amount: '$month',
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DashboardCard(
+                          title: 'Till Date',
+                          amount: '$total',
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: DashboardCard(title: 'This Month', amount: '39'),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: DashboardCard(title: 'Till Date', amount: '231'),
-                  ),
-                ],
-              ),
               const SizedBox(height: 32),
-              const _SectionTitle(title: 'Recent Lead Generated'),
+              const _SectionTitle(title: 'Quick Actions'),
               const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: _buildRecentLeadsTable()),
-                  const SizedBox(width: 24),
-                  Expanded(flex: 2, child: _buildActionGrid(context)),
-                ],
-              ),
-              const SizedBox(height: 24),
+              _buildActionGrid(context),
+              const SizedBox(height: 32),
               const Divider(),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.0),
@@ -106,61 +132,24 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  static Widget _buildRecentLeadsTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 1000),
-        child: DataTable(
-          headingRowColor: MaterialStateProperty.all(const Color(0xFF293B5F)),
-          headingTextStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-          columns: const [
-            DataColumn(label: Text('SN')),
-            DataColumn(label: Text('HR Name')),
-            DataColumn(label: Text('Designation')),
-            DataColumn(label: Text('Mobile')),
-            DataColumn(label: Text('Email')),
-            DataColumn(label: Text('Action')),
-          ],
-          rows:
-              tableData.asMap().entries.map((entry) {
-                final index = entry.key;
-                final data = entry.value;
-                return DataRow(
-                  cells: [
-                    DataCell(Text('${index + 1}')),
-                    DataCell(Text(data['name'] ?? '')),
-                    DataCell(Text(data['designation'] ?? '')),
-                    DataCell(Text(data['mobile'] ?? '')),
-                    DataCell(Text(data['email'] ?? '')),
-                    DataCell(
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.indigo),
-                        onPressed: () {
-                          // Add edit logic
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
-        ),
-      ),
-    );
-  }
-
-  static Widget _buildActionGrid(BuildContext context) {
+  Widget _buildActionGrid(BuildContext context) {
     final List<Map<String, dynamic>> actions = [
       {
         "icon": Icons.assignment,
-        "label": "For Lead Generation Click Here",
+        "label": "Generate New Lead",
         "onTap":
             () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const NewLeadsScreen()),
+            ),
+      },
+      {
+        "icon": Icons.leaderboard,
+        "label": "View Today's Leads",
+        "onTap":
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TodayLeadsScreen()),
             ),
       },
     ];
@@ -170,8 +159,9 @@ class DashboardScreen extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: actions.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 1,
-        mainAxisSpacing: 12,
+        crossAxisCount: 2,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
         childAspectRatio: 3,
       ),
       itemBuilder: (context, index) {
@@ -182,11 +172,11 @@ class DashboardScreen extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               gradient: const LinearGradient(
-                colors: [Color(0xFF4158D0), Color(0xFFC850C0)],
+                colors: [Color(0xFF4158D0), Color.fromARGB(255, 36, 41, 54)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: Colors.black26,
                   blurRadius: 8,

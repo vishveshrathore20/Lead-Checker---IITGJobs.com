@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://192.168.0.187:3000';
+  static const String baseUrl = 'http://192.168.0.186:3000';
 
   static Future<Map<String, dynamic>> signup({
     required String name,
@@ -11,7 +12,6 @@ class AuthService {
     required String role,
   }) async {
     final url = Uri.parse('$baseUrl/api/signup');
-
     try {
       final response = await http.post(
         url,
@@ -55,6 +55,10 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('authToken', data['token']);
+        await prefs.setString('userRole', data['role'] ?? '');
+        await prefs.setString('userEmail', email);
         return {
           'success': true,
           'message': data['message'],
@@ -100,5 +104,22 @@ class AuthService {
     } catch (e) {
       return {'success': false, 'message': 'Error: ${e.toString()}'};
     }
+  }
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('authToken');
+    await prefs.remove('userRole');
+    await prefs.remove('userEmail');
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('authToken');
+  }
+
+  static Future<String?> getUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('userRole');
   }
 }

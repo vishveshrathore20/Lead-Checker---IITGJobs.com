@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/services/auth_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   const OTPVerificationScreen({super.key});
@@ -48,7 +47,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   }
 
   Future<void> verifyOtp() async {
-    String otp = _controllers.map((c) => c.text).join();
+    final otp = _controllers.map((c) => c.text).join();
 
     if (otp.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,19 +59,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     final res = await AuthService.verifyOtp(email: email, otp: otp);
 
     if (res['success']) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', res['token'] ?? '');
-
-      // ⬇️ Role-based redirection
-      if (role == 'admin') {
-        Navigator.pushReplacementNamed(context, '/adminDashboard');
-      } else if (role == 'lg') {
-        Navigator.pushReplacementNamed(context, '/lgDashboard');
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Unknown role.")));
-      }
+      // Return to login screen after verification
+      Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(res['message'] ?? 'OTP verification failed')),
@@ -84,6 +72,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+        padding: const EdgeInsets.all(24),
+        alignment: Alignment.center,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFFe0eafc), Color(0xFFcfdef3)],
@@ -91,8 +81,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             end: Alignment.bottomCenter,
           ),
         ),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.all(24),
         child: Container(
           width: 400,
           padding: const EdgeInsets.all(32),
@@ -118,7 +106,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 8),
@@ -137,10 +124,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                       controller: _controllers[index],
                       focusNode: _focusNodes[index],
                       textAlign: TextAlign.center,
+                      maxLength: 1,
                       style: const TextStyle(fontSize: 20),
                       keyboardType: TextInputType.number,
-                      maxLength: 1,
-                      onChanged: (value) => _onChanged(value, index),
+                      onChanged: (val) => _onChanged(val, index),
                       decoration: InputDecoration(
                         counterText: '',
                         enabledBorder: OutlineInputBorder(
@@ -163,15 +150,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+                  onPressed: verifyOtp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade600,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    elevation: 4,
                   ),
-                  onPressed: verifyOtp,
                   child: Text(
                     "Verify",
                     style: GoogleFonts.poppins(fontSize: 16),

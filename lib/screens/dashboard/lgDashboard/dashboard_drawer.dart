@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/auth/authscreen.dart';
+import 'package:frontend/services/auth_service.dart';
 import 'package:frontend/screens/dashboard/lgDashboard/profile_screen_app_bar.dart';
 import 'new_leads_screen.dart';
 
@@ -15,12 +17,44 @@ class DashboardDrawer extends StatelessWidget {
       leading: Icon(icon, color: Colors.white),
       title: Text(label, style: const TextStyle(color: Colors.white)),
       onTap: () {
-        Navigator.pop(context); // Close the drawer
+        Navigator.pop(context); // Close drawer
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => destination),
         );
       },
+    );
+  }
+
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text("Logout"),
+            content: const Text("Are you sure you want to logout?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx); // Close dialog
+                  await AuthService.logout();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => AuthScreen()),
+                    (route) => false,
+                  );
+                },
+                child: const Text(
+                  "Logout",
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
     );
   }
 
@@ -47,9 +81,7 @@ class DashboardDrawer extends StatelessWidget {
                 'Logout',
                 style: TextStyle(color: Colors.white),
               ),
-              onTap: () {
-                // Handle logout
-              },
+              onTap: () => _handleLogout(context),
             ),
             const SizedBox(height: 20),
           ],

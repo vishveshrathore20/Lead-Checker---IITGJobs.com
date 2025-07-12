@@ -56,20 +56,15 @@ class _AuthScreenState extends State<AuthScreen>
     final password = passwordController.text.trim();
 
     if (isLogin) {
-      // === LOGIN FLOW ===
       final res = await AuthService.login(email: email, password: password);
 
       if (res['success']) {
         final role = (res['role'] ?? '').toLowerCase();
         final token = res['token'];
 
-        print('User role: $role');
-
-        // ✅ Store token
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', token);
 
-        // ✅ Navigate by role
         if (role == 'admin') {
           Navigator.pushReplacementNamed(context, '/adminDashboard');
         } else if (role == 'lg') {
@@ -81,7 +76,6 @@ class _AuthScreenState extends State<AuthScreen>
         _showSnack(res['message']);
       }
     } else {
-      // === SIGNUP FLOW ===
       final name = fullNameController.text.trim();
       final confirmPassword = confirmPasswordController.text.trim();
 
@@ -98,8 +92,8 @@ class _AuthScreenState extends State<AuthScreen>
       );
 
       if (res['success']) {
-        _showSnack("Signup successful! Please login.");
-        setState(() => isLogin = true);
+        // ✅ Navigate to OTP page after successful signup
+        Navigator.pushNamed(context, '/otp', arguments: {'email': email});
       } else {
         _showSnack(res['message']);
       }
