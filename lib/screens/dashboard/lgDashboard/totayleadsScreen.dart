@@ -54,8 +54,16 @@ class _TodayLeadsScreenState extends State<TodayLeadsScreen> {
     final designationController = TextEditingController(
       text: lead['designation'],
     );
-    final mobileController = TextEditingController(text: lead['mobile']);
+    final mobileController = TextEditingController(
+      text:
+          (lead['mobile'] is List)
+              ? (lead['mobile'] as List).join(', ')
+              : lead['mobile'] ?? '',
+    );
     final emailController = TextEditingController(text: lead['email']);
+    final locationController = TextEditingController(
+      text: lead['location'] ?? '',
+    );
 
     showDialog(
       context: context,
@@ -75,11 +83,17 @@ class _TodayLeadsScreenState extends State<TodayLeadsScreen> {
                   ),
                   TextField(
                     controller: mobileController,
-                    decoration: const InputDecoration(labelText: 'Mobile'),
+                    decoration: const InputDecoration(
+                      labelText: 'Mobile (comma separated)',
+                    ),
                   ),
                   TextField(
                     controller: emailController,
                     decoration: const InputDecoration(labelText: 'Email'),
+                  ),
+                  TextField(
+                    controller: locationController,
+                    decoration: const InputDecoration(labelText: 'Location'),
                   ),
                 ],
               ),
@@ -94,8 +108,14 @@ class _TodayLeadsScreenState extends State<TodayLeadsScreen> {
                   final updated = {
                     'name': nameController.text.trim(),
                     'designation': designationController.text.trim(),
-                    'mobile': mobileController.text.trim(),
+                    'mobile':
+                        mobileController.text
+                            .split(',')
+                            .map((e) => e.trim())
+                            .where((e) => e.isNotEmpty)
+                            .toList(),
                     'email': emailController.text.trim(),
+                    'location': locationController.text.trim(),
                   };
 
                   await HrService.updateLead(lead['_id'], updated);
@@ -140,7 +160,8 @@ class _TodayLeadsScreenState extends State<TodayLeadsScreen> {
                             4: FlexColumnWidth(2),
                             5: FlexColumnWidth(2),
                             6: FlexColumnWidth(2),
-                            7: FixedColumnWidth(60),
+                            7: FlexColumnWidth(2),
+                            8: FixedColumnWidth(60),
                           },
                           defaultVerticalAlignment:
                               TableCellVerticalAlignment.middle,
@@ -156,6 +177,7 @@ class _TodayLeadsScreenState extends State<TodayLeadsScreen> {
                                 _HeaderCell('Designation'),
                                 _HeaderCell('Mobile'),
                                 _HeaderCell('Email'),
+                                _HeaderCell('Location'),
                                 _HeaderCell('Industry'),
                                 _HeaderCell('Company'),
                                 _HeaderCell('Edit'),
@@ -168,14 +190,19 @@ class _TodayLeadsScreenState extends State<TodayLeadsScreen> {
                                   lead['industry']?['name'] ?? 'N/A';
                               final companyName =
                                   lead['company']?['name'] ?? 'N/A';
+                              final mobileFormatted =
+                                  lead['mobile'] is List
+                                      ? (lead['mobile'] as List).join(', ')
+                                      : lead['mobile'] ?? '';
 
                               return TableRow(
                                 children: [
                                   _BodyCell('${index + 1}'),
                                   _BodyCell(lead['name'] ?? ''),
                                   _BodyCell(lead['designation'] ?? ''),
-                                  _BodyCell(lead['mobile'] ?? ''),
+                                  _BodyCell(mobileFormatted),
                                   _BodyCell(lead['email'] ?? ''),
+                                  _BodyCell(lead['location'] ?? 'N/A'),
                                   _BodyCell(industryName),
                                   _BodyCell(companyName),
                                   Center(

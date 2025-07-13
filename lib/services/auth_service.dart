@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://192.168.0.186:3000';
+  static const String baseUrl = 'http://localhost:3000';
 
   static Future<Map<String, dynamic>> signup({
     required String name,

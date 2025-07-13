@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:frontend/protectedroute.dart';
 import 'package:frontend/screens/auth/authscreen.dart';
 import 'package:frontend/screens/auth/otpVerification.dart';
+import 'package:frontend/screens/dashboard/adminDashboard.dart/add_company.dart';
+import 'package:frontend/screens/dashboard/adminDashboard.dart/add_industry.dart';
 import 'package:frontend/screens/dashboard/adminDashboard.dart/admindash.dart';
+import 'package:frontend/screens/dashboard/adminDashboard.dart/leads.dart';
 import 'package:frontend/screens/dashboard/lgDashboard/dashboard_screen.dart';
 import 'package:frontend/theme.dart';
 
@@ -33,6 +36,10 @@ class MyApp extends StatelessWidget {
               child: AdminDashboard(),
               requiredRole: 'admin',
             ),
+
+        '/addIndustry': (context) => AddIndustry(),
+        '/addcompanies': (context) => AddCompany(),
+        '/leads': (context) => Leads(),
       },
     );
   }

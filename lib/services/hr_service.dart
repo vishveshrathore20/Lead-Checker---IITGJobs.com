@@ -3,7 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:frontend/services/auth_service.dart';
 
 class HrService {
-  static const baseUrl = 'http://192.168.0.186:3000/api';
+  static const baseUrl = 'http://localhost:3000/api';
+
+  // Cache for industries and companies
+  static final Map<String, List<Map<String, dynamic>>> _companyCache = {};
 
   // ✅ Fetch industries
   static Future<List<dynamic>> fetchIndustries() async {
@@ -15,13 +18,22 @@ class HrService {
     }
   }
 
-  // ✅ Fetch companies by industry
-  static Future<List<dynamic>> fetchCompanies(String industryId) async {
+  // ✅ Fetch companies by industry (with caching)
+  static Future<List<Map<String, dynamic>>> fetchCompanies(
+    String industryId,
+  ) async {
+    if (_companyCache.containsKey(industryId)) {
+      return _companyCache[industryId]!;
+    }
+
     final response = await http.get(
       Uri.parse('$baseUrl/companies/$industryId'),
     );
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final List<dynamic> decoded = json.decode(response.body);
+      final companies = List<Map<String, dynamic>>.from(decoded);
+      _companyCache[industryId] = companies;
+      return companies;
     } else {
       throw Exception('Failed to load companies');
     }

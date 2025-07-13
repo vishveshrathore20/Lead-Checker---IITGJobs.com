@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/services/hr_service.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 
 class NewLeadsScreen extends StatefulWidget {
   const NewLeadsScreen({super.key});
@@ -14,7 +15,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
   String? selectedCompanyId;
 
   List<dynamic> industries = [];
-  List<dynamic> companies = [];
+  List<Map<String, dynamic>> companies = [];
   List<dynamic> hrList = [];
 
   final hrName = TextEditingController();
@@ -22,6 +23,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
   final hrMobile = TextEditingController();
   final hrEmail = TextEditingController();
   final hrRemarks = TextEditingController();
+  final hrLocation = TextEditingController();
 
   bool isLoading = true;
   bool isHrLoading = false;
@@ -43,7 +45,8 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
 
   Future<void> _fetchCompanies(String industryId) async {
     try {
-      companies = await HrService.fetchCompanies(industryId);
+      final list = await HrService.fetchCompanies(industryId);
+      companies = List<Map<String, dynamic>>.from(list);
       setState(() {});
     } catch (_) {
       _showSnackbar("Failed to load companies", isError: true);
@@ -66,12 +69,20 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
       return;
     }
 
+    List<String> mobileList =
+        hrMobile.text
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
     final payload = {
-      "name": hrName.text,
-      "designation": hrDesignation.text,
-      "mobile": hrMobile.text,
-      "email": hrEmail.text,
-      "remarks": hrRemarks.text,
+      "name": hrName.text.trim(),
+      "designation": hrDesignation.text.trim(),
+      "mobile": mobileList,
+      "email": hrEmail.text.trim(),
+      "remarks": hrRemarks.text.trim(),
+      "location": hrLocation.text.trim(),
       "industryId": selectedIndustryId,
       "companyId": selectedCompanyId,
     };
@@ -83,7 +94,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
         _clearForm();
       } else {
         final body = jsonDecode(response.body);
-        if (body['message']?.toLowerCase().contains("already exists") == true) {
+        if (body['message']?.toLowerCase().contains("already") == true) {
           _showDuplicateModal();
         } else {
           _showSnackbar("❌ Failed to add HR", isError: true);
@@ -100,6 +111,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
     hrMobile.clear();
     hrEmail.clear();
     hrRemarks.clear();
+    hrLocation.clear();
     setState(() {
       selectedIndustryId = null;
       selectedCompanyId = null;
@@ -123,7 +135,6 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
   void _showDuplicateModal() {
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder:
           (context) => Dialog(
             shape: RoundedRectangleBorder(
@@ -158,10 +169,6 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
                     ),
                     child: const Text("OK", style: TextStyle(fontSize: 16)),
                   ),
@@ -195,21 +202,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
     return TextField(
       controller: controller,
       keyboardType: type,
-      decoration: InputDecoration(
-        labelText: label,
-        floatingLabelStyle: const TextStyle(color: Colors.indigo),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Colors.indigo),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-      ),
+      decoration: _dropdownDecoration(label),
     );
   }
 
@@ -267,9 +260,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -278,7 +269,6 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                         fontSize: 13,
                         color: Colors.black54,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -314,14 +304,12 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                       value: selectedIndustryId,
                       decoration: _dropdownDecoration("Select Industry"),
                       items:
-                          industries
-                              .map<DropdownMenuItem<String>>(
-                                (industry) => DropdownMenuItem<String>(
-                                  value: industry['_id'] as String,
-                                  child: Text(industry['name']),
-                                ),
-                              )
-                              .toList(),
+                          industries.map<DropdownMenuItem<String>>((industry) {
+                            return DropdownMenuItem<String>(
+                              value: industry['_id'],
+                              child: Text(industry['name']),
+                            );
+                          }).toList(),
                       onChanged: (val) {
                         setState(() {
                           selectedIndustryId = val;
@@ -333,32 +321,93 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: selectedCompanyId,
-                      decoration: _dropdownDecoration("Select Company"),
-                      items:
-                          companies
-                              .map<DropdownMenuItem<String>>(
-                                (company) => DropdownMenuItem<String>(
-                                  value: company['_id'] as String,
-                                  child: Text(company['name']),
-                                ),
+                    DropdownSearch<Map<String, dynamic>>(
+                      items: companies,
+                      itemAsString: (company) => company['name'],
+                      popupProps: PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: "Search Company...",
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.indigo,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        itemBuilder: (context, item, isSelected) {
+                          return ListTile(
+                            leading: const Icon(
+                              Icons.business,
+                              color: Colors.indigo,
+                            ),
+                            title: Text(
+                              item['name'],
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      dropdownDecoratorProps: DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          labelText: "Select Company",
+                          prefixIcon: const Icon(
+                            Icons.apartment,
+                            color: Colors.indigo,
+                          ),
+                          floatingLabelStyle: const TextStyle(
+                            color: Colors.indigo,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: Colors.indigo),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                      selectedItem:
+                          selectedCompanyId != null
+                              ? companies.firstWhere(
+                                (c) => c['_id'] == selectedCompanyId,
+                                orElse: () => {},
                               )
-                              .toList(),
-                      onChanged: (val) {
-                        setState(() => selectedCompanyId = val);
-                        if (selectedIndustryId != null && val != null) {
-                          _fetchHRList(selectedIndustryId!, val);
+                              : null,
+                      onChanged: (company) {
+                        if (company != null) {
+                          setState(() {
+                            selectedCompanyId = company['_id'];
+                          });
+                          if (selectedIndustryId != null) {
+                            _fetchHRList(selectedIndustryId!, company['_id']);
+                          }
                         }
                       },
                     ),
+
                     const SizedBox(height: 16),
                     _buildTextField("HR Name", hrName),
                     const SizedBox(height: 12),
                     _buildTextField("Designation", hrDesignation),
                     const SizedBox(height: 12),
                     _buildTextField(
-                      "Mobile",
+                      "Mobile (comma separated)",
                       hrMobile,
                       type: TextInputType.phone,
                     ),
@@ -368,6 +417,8 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                       hrEmail,
                       type: TextInputType.emailAddress,
                     ),
+                    const SizedBox(height: 12),
+                    _buildTextField("Location", hrLocation),
                     const SizedBox(height: 12),
                     _buildTextField("Remarks", hrRemarks),
                     const SizedBox(height: 20),
