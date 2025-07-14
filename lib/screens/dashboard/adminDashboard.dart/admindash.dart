@@ -21,7 +21,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> _loadStats() async {
     setState(() => isLoading = true);
     try {
-      final data = await fetchAdminStats();
+      final data = await AdminService().fetchAdminStats();
       setState(() {
         statTiles = data;
         isLoading = false;
@@ -36,89 +36,94 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Admin Dashboard"),
-        backgroundColor: Colors.indigo,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Stats',
-            onPressed: _loadStats,
-          ),
-        ],
-      ),
-      body:
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 16,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ✅ Stats Scrollable Row
-                      SizedBox(
-                        height: 100,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: statTiles.length,
-                          separatorBuilder:
-                              (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (context, index) {
-                            final item = statTiles[index];
-                            return _buildStatTile(
-                              item['label'] ?? '',
-                              item['value']?.toString() ?? '',
-                              item['color'] ?? Colors.grey,
-                            );
-                          },
+    return SafeArea(
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(
+          title: const Text("Admin Dashboard"),
+          backgroundColor: Colors.indigo,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh Stats',
+              onPressed: _loadStats,
+            ),
+          ],
+        ),
+        body:
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                  onRefresh: _loadStats,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 16,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Statistics & Reports",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 12),
 
-                      const Text(
-                        "Industry Panels",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        // ✅ Stats Grid View (Wrap layout)
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children:
+                              statTiles.map((item) {
+                                return _buildStatTile(
+                                  item['label'] ?? '',
+                                  item['value'].toString(),
+                                  _parseColor(item['color']),
+                                );
+                              }).toList(),
                         ),
-                      ),
-                      const SizedBox(height: 12),
 
-                      SizedBox(
-                        height: 130,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _dashboardItems.length,
-                          itemBuilder: (context, index) {
-                            final item = _dashboardItems[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 12),
-                              child: _buildTile(
-                                context,
-                                item['icon'],
-                                item['title'],
-                                item['color'],
-                                item['route'],
-                              ),
-                            );
-                          },
+                        const SizedBox(height: 24),
+
+                        const Text(
+                          "Panels",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+
+                        // ✅ Admin Panel Items
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children:
+                              _dashboardItems.map((item) {
+                                return _buildTile(
+                                  context,
+                                  item['icon'],
+                                  item['title'],
+                                  item['color'],
+                                  item['route'],
+                                );
+                              }).toList(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+      ),
     );
   }
 
   Widget _buildStatTile(String label, String value, Color color) {
     return Container(
-      width: 130,
+      width: 150,
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -139,6 +144,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 8),
           Text(
             label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 13, color: Colors.black87),
           ),
         ],
@@ -153,10 +160,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Color color,
     String route,
   ) {
-    return GestureDetector(
+    return InkWell(
       onTap: () => Navigator.pushNamed(context, route),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: 140,
+        width: 150,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -190,6 +198,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  Color _parseColor(dynamic color) {
+    if (color is Color) return color;
+    if (color is String && color.startsWith("#")) {
+      return Color(int.parse(color.substring(1), radix: 16) + 0xFF000000);
+    }
+    return Colors.grey;
+  }
+
   List<Map<String, dynamic>> get _dashboardItems => [
     {
       "icon": Icons.house,
@@ -208,6 +224,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
       "title": "All Leads",
       "color": Colors.orange,
       "route": '/leads',
+    },
+    {
+      "icon": Icons.report_gmailerrorred,
+      "title": "Detail reports on LG",
+      "color": Colors.deepOrange,
+      "route": '/leads', // Update with correct route if needed
     },
   ];
 }
