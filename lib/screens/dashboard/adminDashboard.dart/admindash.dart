@@ -229,7 +229,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       "icon": Icons.report_gmailerrorred,
       "title": "Detail reports on LG",
       "color": Colors.deepOrange,
-      "route": '/leads', // Update with correct route if needed
+      "route": '/lgreport', // Update with correct route if needed
     },
   ];
 }
