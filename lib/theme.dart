@@ -49,12 +49,6 @@ class AppTheme {
         labelStyle: const TextStyle(color: Color(0xFF6B7280)),
       ),
       iconTheme: const IconThemeData(color: Color(0xFF3E4455)),
-      cardTheme: CardTheme(
-        color: Colors.white,
-        elevation: 3,
-        margin: const EdgeInsets.all(8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
     );
   }
 }

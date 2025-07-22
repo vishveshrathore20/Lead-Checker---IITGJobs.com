@@ -12,6 +12,8 @@ class Leads extends StatefulWidget {
 class _LeadsState extends State<Leads> {
   List<dynamic> leads = [];
   List<dynamic> industries = [];
+  List<dynamic> users = [];
+  List<dynamic> companies = [];
   List<String> designations = [];
 
   int currentPage = 1;
@@ -19,26 +21,35 @@ class _LeadsState extends State<Leads> {
   bool isLoading = false;
 
   String? selectedIndustryId;
+  String? selectedUserId;
+  String? selectedCompanyId;
   String? selectedDesignation;
   DateTime? startDate;
   DateTime? endDate;
+
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _filterScrollController = ScrollController();
+  final ScrollController _tableScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _loadIndustries();
+    _loadFilters();
     fetchLeads();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _filterScrollController.dispose();
+    _tableScrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadIndustries() async {
+  Future<void> _loadFilters() async {
     industries = await AdminService.getIndustries();
+    users = await AdminService.getUsers();
+    companies = await AdminService.getCompanies();
     setState(() {});
   }
 
@@ -52,6 +63,8 @@ class _LeadsState extends State<Leads> {
         search: _searchController.text,
         startDate: startDate,
         endDate: endDate,
+        userId: selectedUserId,
+        companyId: selectedCompanyId,
       );
 
       leads = data['leads'];
@@ -86,6 +99,8 @@ class _LeadsState extends State<Leads> {
     setState(() {
       selectedIndustryId = null;
       selectedDesignation = null;
+      selectedUserId = null;
+      selectedCompanyId = null;
       startDate = null;
       endDate = null;
       _searchController.clear();
@@ -111,6 +126,8 @@ class _LeadsState extends State<Leads> {
                 search: _searchController.text,
                 startDate: startDate,
                 endDate: endDate,
+                userId: selectedUserId,
+                companyId: selectedCompanyId,
               );
             },
           ),
@@ -121,87 +138,89 @@ class _LeadsState extends State<Leads> {
               ? const Center(child: CircularProgressIndicator())
               : LayoutBuilder(
                 builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 600;
                   return Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
                       children: [
-                        // 🔍 Filters Section
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minWidth: isWide ? 200 : double.infinity,
-                                maxWidth: isWide ? 250 : double.infinity,
-                              ),
-                              child: DropdownButtonFormField<String>(
-                                value: selectedIndustryId,
-                                decoration: const InputDecoration(
-                                  labelText: 'Industry',
-                                  border: OutlineInputBorder(),
+                        // Filters
+                        Scrollbar(
+                          controller: _filterScrollController,
+                          thumbVisibility: true,
+                          child: SingleChildScrollView(
+                            controller: _filterScrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                _buildDropdown(
+                                  label: "Industry",
+                                  value: selectedIndustryId,
+                                  items: industries,
+                                  getLabel: (i) => i['name'],
+                                  onChanged: (val) {
+                                    setState(() {
+                                      selectedIndustryId = val;
+                                      currentPage = 1;
+                                    });
+                                    fetchLeads();
+                                  },
                                 ),
-                                items:
-                                    industries.map<DropdownMenuItem<String>>((
-                                      industry,
-                                    ) {
-                                      return DropdownMenuItem<String>(
-                                        value: industry['_id'],
-                                        child: Text(industry['name']),
-                                      );
-                                    }).toList(),
-                                onChanged: (val) {
-                                  setState(() {
-                                    selectedIndustryId = val;
-                                    currentPage = 1;
-                                  });
-                                  fetchLeads();
-                                },
-                              ),
-                            ),
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minWidth: isWide ? 200 : double.infinity,
-                                maxWidth: isWide ? 250 : double.infinity,
-                              ),
-                              child: DropdownButtonFormField<String>(
-                                value: selectedDesignation,
-                                decoration: const InputDecoration(
-                                  labelText: 'Designation',
-                                  border: OutlineInputBorder(),
+                                _buildDropdown(
+                                  label: "Company",
+                                  value: selectedCompanyId,
+                                  items: companies,
+                                  getLabel: (c) => c['name'],
+                                  onChanged: (val) {
+                                    setState(() {
+                                      selectedCompanyId = val;
+                                      currentPage = 1;
+                                    });
+                                    fetchLeads();
+                                  },
                                 ),
-                                items:
-                                    designations.map((d) {
-                                      return DropdownMenuItem<String>(
-                                        value: d,
-                                        child: Text(d),
-                                      );
-                                    }).toList(),
-                                onChanged: (val) {
-                                  setState(() {
-                                    selectedDesignation = val;
-                                    currentPage = 1;
-                                  });
-                                  fetchLeads();
-                                },
-                              ),
+                                _buildDropdown(
+                                  label: "Lead Generator",
+                                  value: selectedUserId,
+                                  items: users,
+                                  getLabel: (u) => u['name'],
+                                  onChanged: (val) {
+                                    setState(() {
+                                      selectedUserId = val;
+                                      currentPage = 1;
+                                    });
+                                    fetchLeads();
+                                  },
+                                ),
+                                _buildSimpleDropdown(
+                                  label: "Designation",
+                                  value: selectedDesignation,
+                                  options: designations,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      selectedDesignation = val;
+                                      currentPage = 1;
+                                    });
+                                    fetchLeads();
+                                  },
+                                ),
+                                ElevatedButton.icon(
+                                  icon: const Icon(Icons.date_range),
+                                  label: const Text("Date Range"),
+                                  onPressed: _selectDateRange,
+                                ),
+                                ElevatedButton.icon(
+                                  icon: const Icon(Icons.clear),
+                                  label: const Text("Clear"),
+                                  onPressed: _clearFilters,
+                                ),
+                              ],
                             ),
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.date_range),
-                              label: const Text("Date Range"),
-                              onPressed: _selectDateRange,
-                            ),
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.clear),
-                              label: const Text("Clear"),
-                              onPressed: _clearFilters,
-                            ),
-                          ],
+                          ),
                         ),
                         const SizedBox(height: 10),
 
-                        // 🔎 Search
+                        // Search
                         TextField(
                           controller: _searchController,
                           decoration: const InputDecoration(
@@ -216,13 +235,16 @@ class _LeadsState extends State<Leads> {
                         ),
                         const SizedBox(height: 10),
 
-                        // 📋 Data Table
+                        // Table
                         Expanded(
                           child:
                               leads.isEmpty
                                   ? const Center(child: Text("No leads found."))
                                   : Scrollbar(
+                                    controller: _tableScrollController,
+                                    thumbVisibility: true,
                                     child: SingleChildScrollView(
+                                      controller: _tableScrollController,
                                       scrollDirection: Axis.horizontal,
                                       child: DataTable(
                                         columns: const [
@@ -292,7 +314,7 @@ class _LeadsState extends State<Leads> {
                                   ),
                         ),
 
-                        // 📄 Pagination
+                        // Pagination
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -324,6 +346,63 @@ class _LeadsState extends State<Leads> {
                   );
                 },
               ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required String? value,
+    required List<dynamic> items,
+    required String Function(dynamic) getLabel,
+    required void Function(String?) onChanged,
+  }) {
+    return SizedBox(
+      width: 220,
+      child: DropdownButtonFormField<String>(
+        isExpanded: true,
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+        items:
+            items.map<DropdownMenuItem<String>>((item) {
+              return DropdownMenuItem<String>(
+                value: item['_id'],
+                child: Text(getLabel(item), overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildSimpleDropdown({
+    required String label,
+    required String? value,
+    required List<String> options,
+    required void Function(String?) onChanged,
+  }) {
+    return SizedBox(
+      width: 220,
+      child: DropdownButtonFormField<String>(
+        isExpanded: true,
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+        items:
+            options
+                .map(
+                  (opt) => DropdownMenuItem<String>(
+                    value: opt,
+                    child: Text(opt, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+        onChanged: onChanged,
+      ),
     );
   }
 }

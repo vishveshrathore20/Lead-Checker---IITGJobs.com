@@ -131,7 +131,6 @@ class AdminService {
     return response.statusCode == 200;
   }
 
-  /// Get Filtered Leads
   static Future<Map<String, dynamic>> getFilteredLeads({
     int page = 1,
     String? industryId,
@@ -139,6 +138,8 @@ class AdminService {
     String? search,
     DateTime? startDate,
     DateTime? endDate,
+    String? userId,
+    String? companyId,
   }) async {
     Map<String, String> queryParams = {
       'page': page.toString(),
@@ -148,6 +149,8 @@ class AdminService {
       if (search != null && search.isNotEmpty) 'search': search,
       if (startDate != null) 'startDate': startDate.toIso8601String(),
       if (endDate != null) 'endDate': endDate.toIso8601String(),
+      if (userId != null && userId.isNotEmpty) 'userId': userId,
+      if (companyId != null && companyId.isNotEmpty) 'companyId': companyId,
     };
 
     final uri = Uri.parse(
@@ -171,6 +174,8 @@ class AdminService {
     String? search,
     DateTime? startDate,
     DateTime? endDate,
+    String? userId,
+    String? companyId,
   }) async {
     try {
       final query = {
@@ -179,23 +184,78 @@ class AdminService {
         if (search != null && search.isNotEmpty) 'search': search,
         if (startDate != null) 'startDate': startDate.toIso8601String(),
         if (endDate != null) 'endDate': endDate.toIso8601String(),
+        if (userId != null) 'userId': userId,
+        if (companyId != null) 'companyId': companyId,
       };
 
       final uri = Uri.parse(
         '$baseUrl/admin/export/leads',
       ).replace(queryParameters: query);
 
-      // 👉 Use browser window to download
-      html.AnchorElement anchor =
-          html.AnchorElement(href: uri.toString())
-            ..target = 'blank'
-            ..download = 'leads.xlsx';
-      anchor.click();
+      if (kIsWeb) {
+        html.AnchorElement anchorElement =
+            html.AnchorElement(href: uri.toString())
+              ..setAttribute("download", "report.xlsx")
+              ..click();
+      } else {
+        final response = await Dio().get<List<int>>(
+          uri.toString(),
+          options: Options(responseType: ResponseType.bytes),
+        );
+
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Storage permission denied')));
+          return;
+        }
+
+        final dir = await getExternalStorageDirectory();
+        final filePath =
+            '${dir!.path}/report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+        final file = File(filePath);
+        await file.writeAsBytes(response.data!);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Excel downloaded to $filePath')),
+        );
+        OpenFile.open(filePath);
+      }
     } catch (e) {
-      debugPrint("Excel download error (Web): $e");
+      debugPrint('Download error: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Failed to download Excel: $e")));
+      ).showSnackBar(SnackBar(content: Text('Failed to download Excel')));
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getUsers() async {
+    final url = Uri.parse('$baseUrl/admin/users');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(json.decode(response.body));
+    } else {
+      print('❌ Failed to fetch users: ${response.body}');
+      return [];
+    }
+  }
+
+  /// Fetch LG Stats Report for Admin Dashboard
+  static Future<List<Map<String, dynamic>>> fetchLGStats() async {
+    final url = Uri.parse('$baseUrl/admin/lg-stats');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data);
+      } else {
+        print('❌ Failed to fetch LG stats: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print("❌ Error fetching LG stats: $e");
+      return [];
     }
   }
 }

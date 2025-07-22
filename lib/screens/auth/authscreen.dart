@@ -14,6 +14,7 @@ class _AuthScreenState extends State<AuthScreen>
     with SingleTickerProviderStateMixin {
   bool isLogin = true;
   String selectedRole = 'LG';
+  bool _rememberMe = false;
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController fullNameController = TextEditingController();
@@ -206,16 +207,16 @@ class _AuthScreenState extends State<AuthScreen>
               children: [
                 Row(
                   children: [
-                    Checkbox(value: false, onChanged: (_) {}),
+                    Checkbox(
+                      value: _rememberMe,
+                      onChanged: (value) {
+                        setState(() {
+                          _rememberMe = value!;
+                        });
+                      },
+                    ),
                     Text("Remember Me", style: GoogleFonts.inter(fontSize: 13)),
                   ],
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: Text(
-                    "Forget Password",
-                    style: GoogleFonts.inter(fontSize: 13),
-                  ),
                 ),
               ],
             ),
@@ -312,7 +313,7 @@ class _AuthScreenState extends State<AuthScreen>
                       ),
                       const SizedBox(height: 40),
                       Text(
-                        '"Lead generation is the heartbeat of business growth."',
+                        '"Recruitment Redefined. Your Growth, Our Mission."',
                         style: GoogleFonts.inter(
                           color: Colors.white70,
                           fontSize: 16,
@@ -322,7 +323,7 @@ class _AuthScreenState extends State<AuthScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "- Awaneesh Shrivastava",
+                        "",
                         style: GoogleFonts.inter(
                           color: Colors.white54,
                           fontSize: 14,

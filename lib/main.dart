@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'IITGJobs Admin Panel',
+      title: 'IITGJobs.com',
       theme: AppTheme.lightTheme, // ✅ Apply global theme
       initialRoute: '/auth',
       routes: {
