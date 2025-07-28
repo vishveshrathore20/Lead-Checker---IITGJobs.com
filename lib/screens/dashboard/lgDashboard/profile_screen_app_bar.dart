@@ -7,7 +7,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Profile")),
-      body: const Center(child: Text("This is the Profile screen")),
+      body: const Center(child: Text("Work in Progress.....")),
     );
   }
 }
