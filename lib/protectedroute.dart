@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ProtectedRoute extends StatefulWidget {
   final Widget child;
@@ -17,70 +16,49 @@ class ProtectedRoute extends StatefulWidget {
 }
 
 class _ProtectedRouteState extends State<ProtectedRoute> {
-  bool isLoading = true;
-  bool isAuthorized = false;
+  final _storage = const FlutterSecureStorage();
+  bool _authorized = false;
+  bool _checking = true;
 
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+    _checkAccess();
   }
 
-  Future<void> _checkAuth() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+  Future<void> _checkAccess() async {
+    final role = await _storage.read(key: 'userRole');
+    final token = await _storage.read(key: 'authToken');
 
-    print('Stored token: $token');
-
-    if (token != null) {
-      try {
-        final payload = _parseJwt(token);
-        print("JWT Payload: $payload");
-        print("Required role: ${widget.requiredRole}");
-
-        final userRole = payload['role']?.toString().toLowerCase();
-
-        if (userRole == widget.requiredRole.toLowerCase()) {
-          setState(() {
-            isAuthorized = true;
-          });
-        }
-      } catch (e) {
-        print("Error parsing JWT: $e");
-      }
+    if (token != null &&
+        role?.toLowerCase() == widget.requiredRole.toLowerCase()) {
+      setState(() {
+        _authorized = true;
+        _checking = false;
+      });
+    } else {
+      setState(() {
+        _authorized = false;
+        _checking = false;
+      });
     }
-
-    setState(() {
-      isLoading = false;
-    });
-  }
-
-  Map<String, dynamic> _parseJwt(String token) {
-    final parts = token.split('.');
-    if (parts.length != 3) throw Exception('Invalid token');
-
-    final payload = base64Url.normalize(parts[1]);
-    final decoded = utf8.decode(base64Url.decode(payload));
-    return jsonDecode(decoded);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (_checking) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (!isAuthorized) {
-      return const Scaffold(
-        body: Center(
-          child: Text(
-            'Access Denied',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ),
+    if (_authorized) {
+      return widget.child;
+    } else {
+      Future.microtask(
+        () => Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/auth', (r) => false),
       );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
-    return widget.child;
   }
 }

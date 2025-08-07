@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:frontend/services/auth_service.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     (_) => TextEditingController(),
   );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   late String email;
   late String role;
@@ -22,8 +24,21 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   @override
   void didChangeDependencies() {
     final args = ModalRoute.of(context)?.settings.arguments as Map?;
+
     email = args?['email'] ?? '';
     role = (args?['role'] ?? '').toLowerCase();
+
+    if (email.isEmpty || role.isEmpty) {
+      Future.microtask(() {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Invalid navigation. Missing email/role."),
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/auth');
+      });
+    }
+
     super.didChangeDependencies();
   }
 
@@ -59,8 +74,29 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     final res = await AuthService.verifyOtp(email: email, otp: otp);
 
     if (res['success']) {
-      // Return to login screen after verification
-      Navigator.pop(context, true);
+      // Store token and role
+      await _storage.write(key: 'authToken', value: res['token']);
+      await _storage.write(key: 'userRole', value: res['role'] ?? '');
+      await _storage.write(key: 'userEmail', value: email);
+
+      // Navigate to dashboard based on role
+      if ((res['role'] ?? '').toLowerCase() == 'admin') {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/adminDashboard',
+          (r) => false,
+        );
+      } else if ((res['role'] ?? '').toLowerCase() == 'lg') {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/lgDashboard',
+          (r) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Unknown role")));
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(res['message'] ?? 'OTP verification failed')),

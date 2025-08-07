@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/services/auth_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -61,10 +60,6 @@ class _AuthScreenState extends State<AuthScreen>
 
       if (res['success']) {
         final role = (res['role'] ?? '').toLowerCase();
-        final token = res['token'];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
 
         if (role == 'admin') {
           Navigator.pushReplacementNamed(context, '/adminDashboard');
@@ -93,7 +88,6 @@ class _AuthScreenState extends State<AuthScreen>
       );
 
       if (res['success']) {
-        // ✅ Navigate to OTP page after successful signup
         Navigator.pushNamed(context, '/otp', arguments: {'email': email});
       } else {
         _showSnack(res['message']);

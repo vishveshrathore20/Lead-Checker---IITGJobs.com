@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
   static const String baseUrl = 'http://localhost:3000';
+
+  // Create a singleton instance of FlutterSecureStorage
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   static Future<Map<String, dynamic>> signup({
     required String name,
@@ -55,10 +58,10 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('authToken', data['token']);
-        await prefs.setString('userRole', data['role'] ?? '');
-        await prefs.setString('userEmail', email);
+        await _secureStorage.write(key: 'authToken', value: data['token']);
+        await _secureStorage.write(key: 'userRole', value: data['role'] ?? '');
+        await _secureStorage.write(key: 'userEmail', value: email);
+
         return {
           'success': true,
           'message': data['message'],
@@ -107,19 +110,16 @@ class AuthService {
   }
 
   static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('authToken');
-    await prefs.remove('userRole');
-    await prefs.remove('userEmail');
+    await _secureStorage.delete(key: 'authToken');
+    await _secureStorage.delete(key: 'userRole');
+    await _secureStorage.delete(key: 'userEmail');
   }
 
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('authToken');
+    return await _secureStorage.read(key: 'authToken');
   }
 
   static Future<String?> getUserRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('userRole');
+    return await _secureStorage.read(key: 'userRole');
   }
 }
